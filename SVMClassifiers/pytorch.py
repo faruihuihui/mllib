@@ -11,7 +11,7 @@ class Linear(nn.Module):
     def __init__(self, num_input):
         super(Linear, self).__init__()
         self.dim = num_input
-        self.linear = nn.Linear(self.dim, 2)
+        self.linear = nn.Linear(self.dim, 1)
 
     def forward(self, inputs):
         h = self.linear(inputs)
@@ -60,7 +60,46 @@ class LinearSVMClassifer():
         self.model.eval()
         x = Variable(torch.FloatTensor(test_x))
         output = self.model(x)
-        return F.log_softmax(output).data.max(1, keepdim=True)[1]
+        return output
+
+
+def visualize(X, model):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    W = model.weight[0].data.cpu().numpy()
+    b = model.bias[0].data.cpu().numpy()
+
+    delta = 0.01
+    x = np.arange(X[:, 0].min(), X[:, 0].max(), delta)
+    y = np.arange(X[:, 1].min(), X[:, 1].max(), delta)
+    x, y = np.meshgrid(x, y)
+    xy = map(np.ravel, [x, y])
+
+    z = (W.dot(xy) + b).reshape(x.shape)
+    z[np.where(z > 1.)] = 4
+    z[np.where((z > 0.) & (z <= 1.))] = 3
+    z[np.where((z > -1.) & (z <= 0.))] = 2
+    z[np.where(z <= -1.)] = 1
+
+    plt.figure(figsize=(10, 10))
+    plt.xlim([X[:, 0].min() + delta, X[:, 0].max() - delta])
+    plt.ylim([X[:, 1].min() + delta, X[:, 1].max() - delta])
+    plt.xticks([])
+    plt.yticks([])
+    plt.contourf(x, y, z, alpha=0.8)
+    plt.scatter(x=X[:, 0], y=X[:, 1], c='black', s=10)
+    plt.tight_layout()
+    plt.show()
+
+
+if __name__ == '__main__':
+    from sklearn.datasets.samples_generator import make_blobs
+
+    X, Y = make_blobs(n_samples=500, centers=2, random_state=0, cluster_std=0.4)
+    Y = Y * 2 - 1
+    svmc = LinearSVMClassifer(2, 0.1)
+    svmc.fit(X, Y)
+    visualize(X, svmc.model.linear)
 
 
 
